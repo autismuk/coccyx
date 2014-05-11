@@ -23,6 +23,7 @@ function BoneGraphic:initialise(startPoint,endPoint,imageFile,hingePoints)
 	self.hingePoints = nil 																		-- hinge points.
 	self.startPoint = startPoint 																-- save start and end points
 	self.endPoint = endPoint 	
+	self.hasMoved = false 																		-- set to true after first move.
 	if imageFile ~= nil then self:setImage(imageFile,hingePoints) end 							-- set image file if one provided.
 end
 
@@ -83,7 +84,6 @@ end
 
 function BoneGraphic:_positionImage(x1,y1,x2,y2)
 	self.boneImage.anchorX,self.boneImage.anchorY = 0,0 										-- position as of top left.
-	self.boneImage.xScale, self.boneImage.yScale = 1,1 											-- reset scale to 1,1
 	self.boneImage.x,self.boneImage.y = x1,y1 													-- move to the correct position.
 	self.boneImage.anchorX,self.boneImage.anchorY = self.hingePoints.xBone or 0.5,self.hingePoints.yTop or 0.0
 	x2 = x2 - x1 y2 = y2 - y1 																	-- convert end position to offset.
@@ -93,6 +93,8 @@ function BoneGraphic:_positionImage(x1,y1,x2,y2)
 	reqLength = reqLength / (1-(self.hingePoints.yTop or 0) - (self.hingePoints.yBottom or 0)) 	-- this is how long we want it to be, adjusting for that.
 	local reqScale = math.max(0.001,reqLength / self.boneImage.height) 							-- this is the required scale, at least 0.001 
 	self.boneImage.yScale = reqScale 															-- scale vertically
+	if not self.hasMoved then self.boneImage.xScale = reqScale end 								-- first moves scales horizontally appropriately.
+	self.hasMoved = true
 end
 
 
@@ -125,7 +127,6 @@ bgList[#bgList+1] = DemoBoneGraphic:new(3,6,"leg.png")
 bgList[#bgList+1] = DemoBoneGraphic:new(3,7,"leg.png")
 bgList[#bgList+1] = DemoBoneGraphic:new(2,3,"body.png", { yBottom = 0.2, yTop = 0.1 })
 
-
 --	and (very simply) animate them. 
 --	obviously control files will do this bit :)
 
@@ -147,4 +148,4 @@ Runtime:addEventListener( "enterFrame", function(e)
 	for _,bone in ipairs(bgList) do bone:move() end
 end)
 
--- todo first move establishes scale.
+-- todo first move establishes horizontal scale.
