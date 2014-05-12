@@ -71,6 +71,12 @@ end
 function BoneGraphic:move()
 	local x1,y1 = self.pointList[self.startPoint][1],self.pointList[self.startPoint][2] 		-- access start and end points.
 	local x2,y2 = self.pointList[self.endPoint][1],self.pointList[self.endPoint][2]
+
+	if self.pointList.origin ~= nil then 														-- does the point list have an origin point ?
+		local xo, yo = self.pointList.origin[1],self.pointList.origin[2]
+		x1 = x1 - xo y1 = y1 - yo x2 = x2 - xo y2 = y2 - yo
+	end 
+
 	if self.boneLine == nil and BoneGraphic.showBone then 										-- create the bone line if needed.
 		self.boneLine = display.newLine(0,0,1,0)
 		self.boneLine:setStrokeColor(1,1,0)
@@ -175,6 +181,27 @@ function BoneAnimation:setBone(index,startp,endp,imageReference,hingeData)
 	return self
 end
 
+--//	Set the origin point - this is the point that the move method refers to
+--//	@pt 	[number]					index of point to use as origin.
+
+function BoneAnimation:setOriginPoint(pt)
+	self.originPoint = pt or self.originPoint
+	return self
+end
+
+--//	Set the position if the origin point is defined
+--//	@x 	[number]		coordinate
+--//	@y 	[number]		coordinate
+
+function BoneAnimation:move(x,y) 
+	if self.originPoint then
+		self.pointList.origin = { self.pointList[self.originPoint][1] - x,
+								  self.pointList[self.originPoint][2] - y }
+		self:repaint()
+	end
+end
+
+
 function BoneAnimation:repaint()
 	for _,bone in ipairs(self.boneList) do 
 		bone:move()
@@ -222,6 +249,10 @@ anim:setBone(6,1,2,4, { xBone = 0.6 })
 local frame = 0
 local speed = 5
 
+local xo,yo = 60,180
+local c = display.newCircle(xo,yo,5)
+c:setFillColor( 1,0,0 )
+anim:setOriginPoint(5)
 
 Runtime:addEventListener( "enterFrame", function(e)
 
@@ -233,7 +264,8 @@ Runtime:addEventListener( "enterFrame", function(e)
 	anim:setPoint(4,nil,50 + offset*2)
 	anim:setPoint(6,160+offset,400+offset/6)
 	anim:setPoint(7,160-offset,400+offset/6)
+	anim:move(xo,yo)
 end)
 
---TODO: Anchor point
+--TODO: Anchor point, and anchor it to the ground.
 
