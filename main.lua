@@ -15,8 +15,7 @@ display.setStatusBar( display.HiddenStatusBar )
 _G.Base =  _G.Base or { new = function(s,...) local o = { } setmetatable(o,s) s.__index = s o:initialise(...) return o end, initialise = function() end }
 
 --- ************************************************************************************************************************************************************************
---//	This represents a single bone, which may have an associated line (in debug mode) and image.
---//	This class is abstract - getPoint() is not defined.
+--//								This represents a single bone, which may have an associated line (in debug mode) and image.
 --- ************************************************************************************************************************************************************************
 
 local BoneGraphic = Base:new()
@@ -24,17 +23,19 @@ local BoneGraphic = Base:new()
 BoneGraphic.showBone = true 																	-- static member, if true bone lines are drawn over animation.
 
 --//	Initialise a bone graphic
---//	@startPoint [number] 	index of start point
---//	@endPoint [number] 		index of end point
+--//	@startPoint [number]	start of bone point (e.g relates to top)
+--//	@endPoint [number]		end of bone point (e.g relates to top)
+--//	@pointList [table]		array of two entry lists defining sprite point
 --//	@imageFile [string]		image to use for this bone (optional)
 --//	@hingePoint [table]		optional table for body, specifies vertical line through body, and top and bottom in positions.
 
-function BoneGraphic:initialise(startPoint,endPoint,imageFile,hingePoints)
+function BoneGraphic:initialise(startPoint,endPoint,pointList,imageFile,hingePoints)
 	self.boneLine = nil 																		-- bone line, if used.
 	self.boneImage = nil 																		-- bone image, if used.
 	self.hingePoints = nil 																		-- hinge points.
 	self.startPoint = startPoint 																-- save start and end points
 	self.endPoint = endPoint 	
+	self.pointList = pointList
 	self.hasMoved = false 																		-- set to true after first move.
 	if imageFile ~= nil then self:setImage(imageFile,hingePoints) end 							-- set image file if one provided.
 end
@@ -57,19 +58,19 @@ end
 --//	@return [BoneGraphic]	self
 
 function BoneGraphic:move()
-	self.x1,self.y1 = self:getPoint(self.startPoint)											-- get new points
-	self.x2,self.y2 = self:getPoint(self.endPoint)
+	local x1,y1 = self.pointList[self.startPoint][1],self.pointList[self.startPoint][2]
+	local x2,y2 = self.pointList[self.endPoint][1],self.pointList[self.endPoint][2]
 	if self.boneLine == nil and BoneGraphic.showBone then 										-- create the bone line if needed.
 		self.boneLine = display.newLine(0,0,1,0)
 		self.boneLine:setStrokeColor(1,1,0)
 		self.boneLine.strokeWidth = 3
-		self.boneLine:toFront() 																-- needs to be on top.
 	end
 	if self.boneLine ~= nil then 																-- reposition bone line
-		self:_positionLine(self.x1,self.y1,self.x2,self.y2)
+		self:_positionLine(x1,y1,x2,y2)
+		self.boneLine:toFront() 																-- needs to be on top.
 	end
 	if self.boneImage ~= nil then 																-- reposition bone image
-		self:_positionImage(self.x1,self.y1,self.x2,self.y2)
+		self:_positionImage(x1,y1,x2,y2)
 	end
 	return self
 end
@@ -110,24 +111,69 @@ function BoneGraphic:_positionImage(x1,y1,x2,y2)
 end
 
 
+--- ************************************************************************************************************************************************************************
+--//																Class managing a bone animation
+--- ************************************************************************************************************************************************************************
+
+
+local BoneAnimation = Base:new()
+
+--//	Initialise a bone animation
+
+function BoneAnimation:initialise()
+	self.boneList = {} 																			-- list of bones.
+	self.pointList = {} 																		-- list of points.
+end
+
+--//	Set a skeleton point
+--//	@index 	[number]		point number
+--//	@x 		[number]		x-coordinate
+--//	@y 		[number] 		y-coordinate
+
+function BoneAnimation:setPoint(index,x,y) 
+	local p = self.pointList 																	-- shortens things a bit
+	if p[index] ~= nil then  																	-- if update
+		p[index][1] = x or p[index][1] 															-- can use nil to default to current x or y
+		p[index][2] = y or p[index][2]
+	else
+		assert(x ~= nil and y ~= nil,"coordinates must not be nil") 							-- create a new point
+		p[index] = { x,y }
+	end
+	self:repaint() 																				-- force a repaint
+	return self
+end
+
+--//	Set a bone
+--//	@index 	[number]		bone number
+--//	@startp [number]		start of bone point (e.g relates to top)
+--//	@endp [number]			end of bone point (e.g relates to top)
+--//	@imageFile [string]		image to use for this bone (optional)
+--//	@hingePoint [table]		optional table for body, specifies vertical line through body, and top and bottom in positions.
+
+function BoneAnimation:setBone(index,startp,endp,imageFile,hingeData)
+	local bone = BoneGraphic:new(startp,endp,self.pointList,imageFile,hingeData) 				-- create a new bone
+	-- TODO: Remove it if it already exists.
+	self.boneList[index] = bone 																-- save in the structure
+	self:repaint() 																				-- and repaint.
+	return self
+end
+
+function BoneAnimation:repaint()
+	for _,bone in ipairs(self.boneList) do 
+		bone:move()
+	end
+end
+
+--- ************************************************************************************************************************************************************************
+--- ************************************************************************************************************************************************************************
+
+-- Remove comment to hide the yellow bone lines.
+-- BoneGraphic.showBone = false
+
 --	Points of the demo figure
 local points = {
 	{ 160,80 }, { 160,180} , { 160,280} , { 290,250}, { 30,250}, { 290,400 }, { 30,400 }
 }
-
---- ************************************************************************************************************************************************************************
---	Subclass Bonegraphic to access points array
---- ************************************************************************************************************************************************************************
-
-local DemoBoneGraphic = BoneGraphic:new()
-
-function DemoBoneGraphic:getPoint(n)
-	return points[n][1],points[n][2]
-end
-
---- ************************************************************************************************************************************************************************
---- 																				MAIN
---- ************************************************************************************************************************************************************************
 
 --	Create background.
 
@@ -135,15 +181,17 @@ local background = display.newRect(0,0,320,480)
 background.anchorX,background.anchorY = 0,0
 background:setFillColor( 0,0,1 )
 display.newText("Bone Animation Demo",160,32,system.nativeFont,16)
---	Create list of bones of the bits
 
-local bgList = {}
-bgList[#bgList+1] = DemoBoneGraphic:new(2,4,"arm2.png")
-bgList[#bgList+1] = DemoBoneGraphic:new(2,5,"arm.png")
-bgList[#bgList+1] = DemoBoneGraphic:new(3,6,"leg.png", { xBone = 0.25 })
-bgList[#bgList+1] = DemoBoneGraphic:new(3,7,"leg.png", { xBone = 0.25 })
-bgList[#bgList+1] = DemoBoneGraphic:new(2,3,"body.png", { yBottom = 0.2, yTop = 0.05 })
-bgList[#bgList+1] = DemoBoneGraphic:new(1,2,"head.png", { xBone = 0.6 })
+-- Create animation.
+
+local anim = BoneAnimation:new()
+for _,points in ipairs(points) do anim:setPoint(_,points[1],points[2]) end
+anim:setBone(1,2,4,"arm2.png")
+anim:setBone(2,2,5,"arm.png")
+anim:setBone(3,3,6,"leg.png", { xBone = 0.25 })
+anim:setBone(4,3,7,"leg.png", { xBone = 0.25 })
+anim:setBone(5,2,3,"body.png", { yBottom = 0.2, yTop = 0.05 })
+anim:setBone(6,1,2,"head.png", { xBone = 0.6 })
 
 --	and (very simply) animate them. 
 --	obviously control files will do this bit :)
@@ -151,23 +199,20 @@ bgList[#bgList+1] = DemoBoneGraphic:new(1,2,"head.png", { xBone = 0.6 })
 local frame = 0
 local speed = 3
 
--- Remove comment to hide the yellow bone lines.
--- BoneGraphic.showBone = false
 
 Runtime:addEventListener( "enterFrame", function(e)
 
 	frame = (frame + 1)
 	local offset = math.round(frame * speed) % 200
 	if offset > 100 then offset = 200-offset end
-	points[1][1] = 160 - offset / 4 + 12
-	points[5][2] = 250 - offset
-	points[4][2] = 150 + offset
-	points[6][1] = 160+offset
-	points[6][2] = 400+offset/6
-	points[7][1] = 160-offset
-	points[7][2] = points[6][2]
-	-- points[3][2] = 280 - offset/5
-	for _,bone in ipairs(bgList) do bone:move() end
+	anim:setPoint(1,160 - offset / 4 + 12,nil)
+	anim:setPoint(5,nil,250 - offset)
+	anim:setPoint(4,nil,50 + offset*2)
+	anim:setPoint(6,160+offset,400+offset/6)
+	anim:setPoint(7,160-offset,400+offset/6)
 end)
 
--- todo first move establishes horizontal scale.
+--TODO: Bone.remove and code in
+--TODO: Fix to use spritesheet
+--TODO: Anchor point
+
