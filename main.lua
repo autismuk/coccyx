@@ -1,4 +1,4 @@
---	So I can't draw !
+--	The Gnome came from Ray Wenderlich, incidentally.
 
 display.setStatusBar( display.HiddenStatusBar )
 
@@ -49,7 +49,7 @@ function BoneGraphic:move()
 	self.x2,self.y2 = self:getPoint(self.endPoint)
 	if self.boneLine == nil and BoneGraphic.showBone then 										-- create the bone line if needed.
 		self.boneLine = display.newLine(0,0,1,0)
-		self.boneLine:setStrokeColor(0,0,1)
+		self.boneLine:setStrokeColor(1,1,0)
 		self.boneLine.strokeWidth = 3
 		self.boneLine:toFront() 																-- needs to be on top.
 	end
@@ -100,7 +100,7 @@ end
 
 --	Points of the demo figure
 local points = {
-	{ 160,80 }, { 160,160} , { 160,280} , { 290,250}, { 30,250}, { 290,400 }, { 30,400 }
+	{ 160,80 }, { 160,180} , { 160,280} , { 290,250}, { 30,250}, { 290,400 }, { 30,400 }
 }
 
 --	Subclass Bonegraphic to access points array
@@ -115,17 +115,18 @@ end
 
 local background = display.newRect(0,0,320,480)
 background.anchorX,background.anchorY = 0,0
-background:setFillColor( 0,0.5,0 )
+background:setFillColor( 0,0,1 )
 display.newText("Bone Animation Demo 1",160,32,system.nativeFont,16)
 --	Create list of bones of the bits
 
 local bgList = {}
 bgList[#bgList+1] = DemoBoneGraphic:new(1,2,"head.png")
-bgList[#bgList+1] = DemoBoneGraphic:new(2,4,"arm.png")
+bgList[#bgList+1] = DemoBoneGraphic:new(2,4,"arm2.png")
 bgList[#bgList+1] = DemoBoneGraphic:new(2,5,"arm.png")
-bgList[#bgList+1] = DemoBoneGraphic:new(3,6,"leg.png")
-bgList[#bgList+1] = DemoBoneGraphic:new(3,7,"leg.png")
-bgList[#bgList+1] = DemoBoneGraphic:new(2,3,"body.png", { yBottom = 0.2, yTop = 0.1 })
+bgList[#bgList+1] = DemoBoneGraphic:new(3,6,"leg.png", { xBone = 0.25 })
+bgList[#bgList+1] = DemoBoneGraphic:new(3,7,"leg.png", { xBone = 0.25 })
+bgList[#bgList+1] = DemoBoneGraphic:new(2,3,"body.png", { yBottom = 0.2, yTop = 0.05 })
+bgList[#bgList+1] = DemoBoneGraphic:new(1,2,"head.png")
 
 --	and (very simply) animate them. 
 --	obviously control files will do this bit :)
