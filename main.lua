@@ -23,13 +23,14 @@ local BoneGraphic = Base:new()
 BoneGraphic.showBone = true 																	-- static member, if true bone lines are drawn over animation.
 
 --//	Initialise a bone graphic
---//	@startPoint [number]	start of bone point (e.g relates to top)
---//	@endPoint [number]		end of bone point (e.g relates to top)
---//	@pointList [table]		array of two entry lists defining sprite point
---//	@imageFile [string]		image to use for this bone (optional)
---//	@hingePoint [table]		optional table for body, specifies vertical line through body, and top and bottom in positions.
+--//	@startPoint [number]			start of bone point (e.g relates to top)
+--//	@endPoint [number]				end of bone point (e.g relates to top)
+--//	@pointList [table]				array of two entry lists defining sprite point
+--//	@imageSheet [ImageSheet] 		Image Sheet
+--//	@imageRef [string/number]		image to use for this bone
+--//	@hingePoint [table]				optional table for body, specifies vertical line through body, and top and bottom in positions.
 
-function BoneGraphic:initialise(startPoint,endPoint,pointList,imageFile,hingePoints)
+function BoneGraphic:initialise(startPoint,endPoint,pointList,imageSheet,imageRef,hingePoints)
 	self.boneLine = nil 																		-- bone line, if used.
 	self.boneImage = nil 																		-- bone image, if used.
 	self.hingePoints = nil 																		-- hinge points.
@@ -37,16 +38,26 @@ function BoneGraphic:initialise(startPoint,endPoint,pointList,imageFile,hingePoi
 	self.endPoint = endPoint 	
 	self.pointList = pointList
 	self.hasMoved = false 																		-- set to true after first move.
-	if imageFile ~= nil then self:setImage(imageFile,hingePoints) end 							-- set image file if one provided.
+	self.imageSheet = imageSheet 																-- save image sheet
+	if imageRef ~= nil then self:setImage(imageRef,hingePoints) end 							-- set image file if one provided.
+end
+
+--//	Clear down a bone graphic object.
+
+function BoneGraphic:remove()
+	if self.boneLine ~= nil then self.boneLine:removeSelf() end 								-- remove bone line if exists
+	if self.boneImage ~= nil then self.boneImage:removeSelf() end 								-- remove bone image if exists
+	self.hingePoints = nil self.startPoint = nil self.endPoint = nil self.pointList = nil 		-- null everything out
+	self.hasMoved = nil self.imageSheet = nil
 end
 
 --//	Set the current bone image
---//	@imageFile [string]		image to use for this bone (optional)
---//	@hingePoint [table]		optional table for body, specifies vertical line through body, and top and bottom in positions.
---//	@return [BoneGraphic]	self
+--//	@imageRef [string/number]		image to use for this bone
+--//	@hingePoint [table]				optional table for body, specifies vertical line through body, and top and bottom in positions.
+--//	@return [BoneGraphic]			self
 
-function BoneGraphic:setImage(imageFile,hingePoints)
-	self.boneImage = display.newImage(imageFile)												-- create image object
+function BoneGraphic:setImage(imageRef,hingePoints)
+	self.boneImage = display.newImage(self.imageSheet,imageRef)									-- create image object
 	self.hingePoints = hingePoints or {} 														-- save hinge points
 	if self.x1 ~= nil then  																	-- if it has already been positioned move it.
 		self:move()
@@ -58,7 +69,7 @@ end
 --//	@return [BoneGraphic]	self
 
 function BoneGraphic:move()
-	local x1,y1 = self.pointList[self.startPoint][1],self.pointList[self.startPoint][2]
+	local x1,y1 = self.pointList[self.startPoint][1],self.pointList[self.startPoint][2] 		-- access start and end points.
 	local x2,y2 = self.pointList[self.endPoint][1],self.pointList[self.endPoint][2]
 	if self.boneLine == nil and BoneGraphic.showBone then 										-- create the bone line if needed.
 		self.boneLine = display.newLine(0,0,1,0)
@@ -119,10 +130,15 @@ end
 local BoneAnimation = Base:new()
 
 --//	Initialise a bone animation
+--//	@imageSheet [ImageSheet/String]		Corona Image Sheet or Sheet Name.
 
-function BoneAnimation:initialise()
+function BoneAnimation:initialise(imageSheet)
+	if type(imageSheet) == "string" then 														-- string provided ?
+		imageSheet = graphics.newImageSheet(imageSheet..".png", require(imageSheet):getSheet())	-- load image sheet if name given.
+	end
 	self.boneList = {} 																			-- list of bones.
 	self.pointList = {} 																		-- list of points.
+	self.imageSheet = imageSheet 																-- save image sheet
 end
 
 --//	Set a skeleton point
@@ -144,15 +160,16 @@ function BoneAnimation:setPoint(index,x,y)
 end
 
 --//	Set a bone
---//	@index 	[number]		bone number
---//	@startp [number]		start of bone point (e.g relates to top)
---//	@endp [number]			end of bone point (e.g relates to top)
---//	@imageFile [string]		image to use for this bone (optional)
---//	@hingePoint [table]		optional table for body, specifies vertical line through body, and top and bottom in positions.
+--//	@index 	[number]					bone number
+--//	@startp [number]					start of bone point (e.g relates to top)
+--//	@endp [number]						end of bone point (e.g relates to top)
+--//	@imageReference [string/number]		image to use for this bone
+--//	@hingePoint [table]					optional table for body, specifies vertical line through body, and top and bottom in positions.
 
-function BoneAnimation:setBone(index,startp,endp,imageFile,hingeData)
-	local bone = BoneGraphic:new(startp,endp,self.pointList,imageFile,hingeData) 				-- create a new bone
-	-- TODO: Remove it if it already exists.
+function BoneAnimation:setBone(index,startp,endp,imageReference,hingeData)
+	local bone = BoneGraphic:new(startp,endp,self.pointList,									-- create a new bone
+											self.imageSheet,imageReference,hingeData) 			
+	if self.boneList[index] ~= nil then self.boneList[index]:remove() end 						-- remove pre-existing bones, so you can change them.
 	self.boneList[index] = bone 																-- save in the structure
 	self:repaint() 																				-- and repaint.
 	return self
@@ -180,24 +197,30 @@ local points = {
 local background = display.newRect(0,0,320,480)
 background.anchorX,background.anchorY = 0,0
 background:setFillColor( 0,0,1 )
-display.newText("Bone Animation Demo",160,32,system.nativeFont,16)
+display.newText("Bone Animation Demo 2",160,32,system.nativeFont,16)
 
 -- Create animation.
 
-local anim = BoneAnimation:new()
+local anim = BoneAnimation:new("bonesheet")
+
+-- Add the skeleton points
+
 for _,points in ipairs(points) do anim:setPoint(_,points[1],points[2]) end
-anim:setBone(1,2,4,"arm2.png")
-anim:setBone(2,2,5,"arm.png")
-anim:setBone(3,3,6,"leg.png", { xBone = 0.25 })
-anim:setBone(4,3,7,"leg.png", { xBone = 0.25 })
-anim:setBone(5,2,3,"body.png", { yBottom = 0.2, yTop = 0.05 })
-anim:setBone(6,1,2,"head.png", { xBone = 0.6 })
+
+-- Add the bone images
+
+anim:setBone(1,2,4,2)
+anim:setBone(2,2,5,1)
+anim:setBone(3,3,6,5, { xBone = 0.25 })
+anim:setBone(4,3,7,5, { xBone = 0.25 })
+anim:setBone(5,2,3,3, { yBottom = 0.2, yTop = 0.05 })
+anim:setBone(6,1,2,4, { xBone = 0.6 })
 
 --	and (very simply) animate them. 
 --	obviously control files will do this bit :)
 
 local frame = 0
-local speed = 3
+local speed = 5
 
 
 Runtime:addEventListener( "enterFrame", function(e)
@@ -212,7 +235,5 @@ Runtime:addEventListener( "enterFrame", function(e)
 	anim:setPoint(7,160-offset,400+offset/6)
 end)
 
---TODO: Bone.remove and code in
---TODO: Fix to use spritesheet
 --TODO: Anchor point
 
