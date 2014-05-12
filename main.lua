@@ -1,11 +1,23 @@
+--- ************************************************************************************************************************************************************************
+---
+---				Name : 		main.lua
+---				Purpose :	Skeletal Animation (v. simple) experiments
+---				Created:	12 May 2014
+---				Author:		Paul Robson (paul@robsons.org.uk)
+---				License:	MIT
+---
+--- ************************************************************************************************************************************************************************
+
 --	The Gnome came from Ray Wenderlich, incidentally.
 
 display.setStatusBar( display.HiddenStatusBar )
 
 _G.Base =  _G.Base or { new = function(s,...) local o = { } setmetatable(o,s) s.__index = s o:initialise(...) return o end, initialise = function() end }
 
+--- ************************************************************************************************************************************************************************
 --//	This represents a single bone, which may have an associated line (in debug mode) and image.
 --//	This class is abstract - getPoint() is not defined.
+--- ************************************************************************************************************************************************************************
 
 local BoneGraphic = Base:new()
 
@@ -103,7 +115,9 @@ local points = {
 	{ 160,80 }, { 160,180} , { 160,280} , { 290,250}, { 30,250}, { 290,400 }, { 30,400 }
 }
 
+--- ************************************************************************************************************************************************************************
 --	Subclass Bonegraphic to access points array
+--- ************************************************************************************************************************************************************************
 
 local DemoBoneGraphic = BoneGraphic:new()
 
@@ -111,32 +125,39 @@ function DemoBoneGraphic:getPoint(n)
 	return points[n][1],points[n][2]
 end
 
+--- ************************************************************************************************************************************************************************
+--- 																				MAIN
+--- ************************************************************************************************************************************************************************
+
 --	Create background.
 
 local background = display.newRect(0,0,320,480)
 background.anchorX,background.anchorY = 0,0
 background:setFillColor( 0,0,1 )
-display.newText("Bone Animation Demo 1",160,32,system.nativeFont,16)
+display.newText("Bone Animation Demo",160,32,system.nativeFont,16)
 --	Create list of bones of the bits
 
 local bgList = {}
-bgList[#bgList+1] = DemoBoneGraphic:new(1,2,"head.png")
 bgList[#bgList+1] = DemoBoneGraphic:new(2,4,"arm2.png")
 bgList[#bgList+1] = DemoBoneGraphic:new(2,5,"arm.png")
 bgList[#bgList+1] = DemoBoneGraphic:new(3,6,"leg.png", { xBone = 0.25 })
 bgList[#bgList+1] = DemoBoneGraphic:new(3,7,"leg.png", { xBone = 0.25 })
 bgList[#bgList+1] = DemoBoneGraphic:new(2,3,"body.png", { yBottom = 0.2, yTop = 0.05 })
-bgList[#bgList+1] = DemoBoneGraphic:new(1,2,"head.png")
+bgList[#bgList+1] = DemoBoneGraphic:new(1,2,"head.png", { xBone = 0.6 })
 
 --	and (very simply) animate them. 
 --	obviously control files will do this bit :)
 
 local frame = 0
+local speed = 3
+
+-- Remove comment to hide the yellow bone lines.
+-- BoneGraphic.showBone = false
 
 Runtime:addEventListener( "enterFrame", function(e)
 
 	frame = (frame + 1)
-	local offset = frame * 2 % 200
+	local offset = math.round(frame * speed) % 200
 	if offset > 100 then offset = 200-offset end
 	points[1][1] = 160 - offset / 4 + 12
 	points[5][2] = 250 - offset
