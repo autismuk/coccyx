@@ -1,5 +1,5 @@
-Animation-Manager
-=================
+Coccyx
+======
 
 Bone based sprite animation 
 
